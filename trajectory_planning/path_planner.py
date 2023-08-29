@@ -39,13 +39,17 @@ class pathPlanner(basePathPlanner):
     def compute_desired_path(
             self,
             state: list[float],
-            point_cloud: list[list[float]],
+            point_cloud: Optional[list[list[float]]] = None,
     ) -> list[float]:
+
         state_offset = np.zeros((state.size,))
         state_offset[0:3] = state[0:3]
         current_state = state
 
-        next_location = self.algorithm.compute_next_point(points=point_cloud, goal=self.goal-state_offset)
+        if point_cloud is None:
+            next_location = [self.goal[0:3]/np.linalg.norm(self.goal[0:3])*0.25*self.algorithm.radius]
+        else:
+            next_location = self.algorithm.compute_next_point(points=point_cloud, goal=self.goal-state_offset)
 
         if self.interpolation_method == 'linear':
             path = np.array([])
@@ -69,7 +73,7 @@ class pathPlanner(basePathPlanner):
             if len(path) == 0:
                 return []
             else:
-                filler = np.zeros((len(path),9))
+                filler = np.zeros((len(path),len(state)-3))
                 path = np.concatenate((path,filler),axis=1)
         return path
 

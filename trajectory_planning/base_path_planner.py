@@ -39,6 +39,7 @@ class basePathPlanner():
             self.min_distance = min_obstacle_distance
             self.iterations = iterations
             self.layers = layers
+            self.radius = radius
 
         def compute_next_point(
                 self,

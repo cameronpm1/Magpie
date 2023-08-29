@@ -36,6 +36,7 @@ class obstacleAvoidanceEnv():
         self.obstacles = []
         
         self.point_cloud_plot = None
+        self.point_cloud = None
 
         kwargs['dynamics'] = main_object.dynamics
         self.control_method = getattr(self,control_method)(**kwargs)
@@ -55,8 +56,14 @@ class obstacleAvoidanceEnv():
         if self.current_path.size == 0:
             self.get_new_path()
 
+    def reset(self) -> None:
+        self.main_object.dynamics.reset_state()
+        self.get_new_path()
+
     def compute_next_action(self) -> list[float]:
         next_action = self.control_method.compute_action(goal=self.current_path[0])
+        #print(next_action)
+        #print(np.linalg.norm(self.main_object.dynamics.get_vel()))
         return next_action
 
     def check_reached_path_point(self) -> None:
@@ -64,7 +71,10 @@ class obstacleAvoidanceEnv():
             self.current_path = self.current_path[1:]
 
     def get_new_path(self) -> None:
-        point_cloud = self.generate_proximal_point_cloud()
+        if self.point_cloud is None:
+            point_cloud = self.point_cloud
+        else:
+            point_cloud = self.generate_proximal_point_cloud()
         new_path = self.path_planner.compute_desired_path(state=self.main_object.dynamics.state, point_cloud=point_cloud)
         self.current_path = new_path[1:]
 
@@ -94,7 +104,8 @@ class obstacleAvoidanceEnv():
         objects.append(self.main_object.temp_mesh)
         objects = copy.deepcopy(self.main_object.temp_mesh)
         objects['goal'] = self.current_path[0]
-        objects['point cloud'] = self.point_cloud_plot
+        if self.point_cloud_plot is not None:
+            objects['point cloud'] = self.point_cloud_plot
         objects['final goal'] = self.path_planner.goal[0:3]
         return objects
     
@@ -123,8 +134,11 @@ class obstacleAvoidanceEnv():
             else:
                 self.point_cloud = np.concatenate(self.point_cloud,local_point_cloud)
 
-
-
+    def set_new_path(self, new_path: list[list[float]]) -> None:
+        '''
+        set path for testing purposes
+        '''
+        self.current_path = new_path
     
     class MPC():
 
@@ -182,7 +196,7 @@ class obstacleAvoidanceEnv():
                 if isinstance(self.dynamics,quadcopterDynamics):
                     constr += [self.x[:, t + 1] == self.A @ self.x[:, t] + self.B @ self.u[:, t]] 
                 else:
-                    constr += [self.x[:, t + 1] == self.A * self.x[:, t] + self.B * self.u[:, t]]
+                    constr += [self.x[:, t + 1] == self.A @ self.x[:, t] + self.B @ self.u[:, t]]
 
             cost += cp.quad_form(goal-self.x[:, self.horizon], self.dynamics.Q)  # End of trajectory error cost
             problem = cp.Problem(cp.Minimize(cost), constr)

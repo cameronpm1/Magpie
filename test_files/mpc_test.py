@@ -1,12 +1,18 @@
+import sys
+sys.path.insert(1, 'c:/Users/Cameron Mehlman/Documents/Magpie')
+
 import numpy as np
 import time
 
 from dynamics.quad_dynamics import quadcopterDynamics
+from dynamics.sat_dynamics import satelliteDynamics
+from dynamics.dynamic_object import dynamicObject
 from controllers.mpc import MPC
 from envs.gui import Renderer
 from envs.magpie_env import magpieEnv
 from unsupported.quadcopter import quadcopter
 from dynamics.static_object import staticObject
+from envs.obstacle_avoidance_env import obstacleAvoidanceEnv
 
 def test_quad_gui():
     renderer = Renderer(
@@ -17,6 +23,7 @@ def test_quad_gui():
     )
     time.sleep(1)
 
+    '''
     dynamics = quadcopterDynamics(
         timestep = 0.01,
         horizon = 10,
@@ -29,7 +36,46 @@ def test_quad_gui():
             'I' : np.array([0.0213, 0.02217, 0.0282]),
         },
     )
+    '''
 
+    dynamics = satelliteDynamics(
+        timestep = 3,
+        horizon = 5,
+        pos = np.array([0, 0, 0]),
+        initial_orbit = {
+            'a' : 35786 << u.km,
+            'ecc' : 0.0 << u.one,
+            'inc' : 1.85 << u.deg,
+            'raan' : 49.562 << u.deg,
+            'argp' : 286.537 << u.deg,
+            'nu' : 0 << u.deg,
+        },
+        initial_state_data = {'momentum_wheel_vel' : np.array([0, 0, 0])},
+        spacecraft_data = {
+            'J_sc' : np.array([1.7e4, 2.7e4, 2.7e4]),
+            'alpha' : np.array([0.8, 0.8, 0.8]),
+            'mass' : 4000,
+        },
+    )
+
+    satellite = dynamicObject(
+        dynamics=satelliteDynamics,
+        mesh = {
+            'points' : np.array([
+                [1.0,0.5,0.5],[-1.0,0.5,0.5],
+                [1.0,0.5,-0.5],[-1.0,0.5,-0.5],
+                [1.0,-0.5,0.5],[-1.0,-0.5,0.5],
+                [1.0,-0.5,-0.5],[-1.0,-0.5,-0.5],
+            ]),
+            'lines' : np.array([
+                [0,1],[0,2],[1,3],[2,3],
+                [4,5],[4,6],[5,7],[6,7],
+                [0,4],[1,5],[2,6],[3,7]
+            ])
+        }
+    )
+
+    '''
     drone = quadcopter(
         dynamics = dynamics,
         mesh = {
@@ -46,16 +92,17 @@ def test_quad_gui():
         },
         name = 'drone'
     )
+    '''
 
-    env = magpieEnv(
-        main_object=drone,
+    env = obstacleAvoidanceEnv(
+        main_object=quadcopter,
     )
 
     xmin = np.array([-np.inf,  -np.inf,  -np.inf, -np.inf, -np.inf, -np.inf, -0.2, -0.2, -2*np.pi, -.25, -.25, -.25])
     xmax = np.array([np.inf,   np.inf,   np.inf,   np.inf,  np.inf, np.inf, 0.2,  0.2,   2*np.pi,  .25, .25,  .25])
 
-    ymin = np.array([-20,-5,-5,-5])
-    ymax = np.array([20,5,5,5])
+    ymin = np.array([-1,-1,-1,-0.5,-0.5,-0.5,-100,-100,-100])
+    ymax = np.array([1,1,1,0.5,0.5,0.5,100,100,100])
 
     mpc = MPC(
         dynamics=dynamics, 
@@ -69,11 +116,11 @@ def test_quad_gui():
 
     mpc.update_state()
 
-    goals = [[0, 2, 10, 0,0,0,0,0,0,0,0,0],
-             [0, 2, 11, 0,0,0,0,0,0,0,0,0],
-             [1, 2, 12, 0,0,0,0,0,0,0,0,0],
-             [2, 2, 13, 0,0,0,0,0,0,0,0,0],
-             [3, 2, 14, 0,0,0,0,0,0,0,0,0]]
+    goals = [[0, 2, 2, 0,0,0,0,0,0,0,0,0],
+             [0, 2, 1, 0,0,0,0,0,0,0,0,0],
+             [1, 2, 1, 0,0,0,0,0,0,0,0,0],
+             [2, 2, 1, 0,0,0,0,0,0,0,0,0],
+             [3, 2, 1, 0,0,0,0,0,0,0,0,0]]
 
     j = 0
     goal = goals[j]

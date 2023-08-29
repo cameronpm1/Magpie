@@ -37,6 +37,7 @@ class satelliteDynamics(baseDynamics):
         initial_orbit: Optional[Dict[str, Any]] = None,
         initial_state_data: Optional[Dict[str, Any]] = None,
         spacecraft_data: Optional[Dict[str, Any]] = None,
+        max_control: list[float] = [0.1,0.1,0.1,0.1,0.1,0.1,1000,1000,1000],
     ):
         
         super().__init__(
@@ -53,7 +54,7 @@ class satelliteDynamics(baseDynamics):
             print('Error: no orbit data presented')
             exit()
         elif initial_orbit.keys() >= {'pos0','vel0'}:
-            self.orbit = Orbit.from_vectors(Earth, initial_orbit[pos0], initial_orbit[vel0])
+            self.orbit = Orbit.from_vectors(Earth, initial_orbit['pos0'], initial_orbit['vel0'])
         elif initial_orbit.keys() >= {'a', 'ecc', 'inc', 'raan', 'argp', 'nu'}:
             self.orbit = Orbit.from_classical(
                 Earth, 
@@ -76,12 +77,109 @@ class satelliteDynamics(baseDynamics):
         self.spacecraft_data = spacecraft_data
         self.state_matrix_discretized = None
         self.control_matrix_discretized = None
+        self.max_control = np.array(max_control)
 
 
         self.initialize_state()
         self.initialize_control()
         self.initialize_state_matrix()
         self.initialize_control_matrix()
+
+
+    '''
+    MPC SUPPORT FUNCTIONS
+
+    A,B,C,D,Q,R are all solely to be used by the Linear-Quadratic MPC
+    A and B are the control and state matrices for the simplified
+    linear dyanmics of a quadcopter (from same paper). 
+
+    convert_input transforms the motor command speeds to
+    forces and torques using support fuctions from the 
+    optomizer package used in the MPC
+
+    MPC equations are presented as:
+
+    dx/dt = Ax + Bu
+    y = Cx + Du
+    cost = xQx + uDu
+
+    They assume ONLY small deviations in euler angles from 0 (~5deg)
+    '''
+
+    @property
+    def A(self):
+        # Linear state transition matrix
+        A = np.zeros((self.state.size, self.state.size))
+        A[0][3] = 1
+        A[1][4] = 1
+        A[2][5] = 1
+        A[3][0] = 3*self.n**2
+        A[3][4] = 2*self.n
+        A[4][3] = -2*self.n
+        A[5][2] = -(self.n**2)
+        A[6][8] = self.n
+        A[6][9] = 1
+        A[7][10] = 1
+        A[8][6] = -self.n
+        A[8][11] = 1
+        A[9][11] = -(self.spacecraft_data['J_sc'][1]-self.spacecraft_data['J_sc'][2])*self.n/self.spacecraft_data['J_sc'][0]
+        A[9][14] = self.n*self.spacecraft_data['alpha'][2]/self.spacecraft_data['J_sc'][0]
+        A[11][9] = -(self.spacecraft_data['J_sc'][0]-self.spacecraft_data['J_sc'][1])*self.n/self.spacecraft_data['J_sc'][2]
+        A[11][12] = self.n*self.spacecraft_data['alpha'][0]/self.spacecraft_data['J_sc'][2]
+        return A
+    
+    @property
+    def B(self):
+        # Control matrix
+        B = np.zeros((self.state.size,self.control.size))
+        B[3][0] = 1/self.mass
+        B[4][1] = 1/self.mass
+        B[5][2] = 1/self.mass
+        B[9][3] = -self.spacecraft_data['alpha'][0]/self.spacecraft_data['J_sc'][0]
+        B[9][6] = 1/self.spacecraft_data['J_sc'][0]
+        B[10][4] = -self.spacecraft_data['alpha'][1]/self.spacecraft_data['J_sc'][1]
+        B[10][7] = 1/self.spacecraft_data['J_sc'][1]
+        B[11][5] = -self.spacecraft_data['alpha'][2]/self.spacecraft_data['J_sc'][2]
+        B[11][8] = 1/self.spacecraft_data['J_sc'][2]
+        B[12][3] = 1
+        B[13][4] = 1
+        B[14][5] = 1
+        return B
+    
+    @property
+    def C(self):
+        C = np.eye(self.state.size)
+        return C
+
+    @property
+    def D(self):
+        D = np.zeros((self.state.size, self.control.size))
+        return D
+    
+    @property
+    def Q(self):
+        # State cost
+        Q = np.eye(self.state.size)
+        Q[0, 0] = 5.  # x pos
+        Q[1, 1] = 5.  # y pos
+        Q[2, 2] = 5.  # z pos
+        Q[3, 3] = 20.  # x vel
+        Q[4, 5] = 0  # y vel
+        Q[5, 5] = 100.  # z vel
+        return Q
+
+    @property
+    def R(self):
+        # Actuator cost
+        R = np.eye(self.control.size)*.1
+        R[6, 6] = 0.001
+        R[7, 7] = 0.001
+        R[8, 8] = 0.001
+        return R
+
+    '''
+    END OF MPC SUPPORT FUNCTIONS
+    '''
 
 
     def initialize_state(self) -> None:
@@ -91,7 +189,11 @@ class satelliteDynamics(baseDynamics):
         else:
             self.state = np.concatenate(self.state,np.array([0, 0, 0]))
             print('No momentum wheel velocities in initial state data, setting to 0')
+        
          
+    def reset_state(self) -> None:
+        super().reset_state()
+        self.initialize_state()
 
     def initialize_control(self) -> None:
         self.control = np.zeros((9,1))
@@ -141,14 +243,13 @@ class satelliteDynamics(baseDynamics):
            
 
     def set_control(self, control) -> None:
+        control = np.clip(control, -self.max_control, self.max_control)
         for i in range(self.control.size):
             self.control[i] = control[i]
 
     def compute_derivatives(self, state, t) -> list[float]:
-        '''
-        new_state = np.dot(self.state_matrix_discretized,self.state) + np.dot(self.control_matrix_discretized,self.control) #calculate new state
-        '''
 
+        '''
         rotation_axis_matrix = np.array([
             [0, -self.omega[0], -self.omega[1], -self.omega[2]],
             [self.omega[0], 0, self.omega[2], -self.omega[1]],
@@ -157,16 +258,18 @@ class satelliteDynamics(baseDynamics):
         ]) 
         new_quat = np.dot( (np.identity(4)+(0.5*self.timestep*rotation_axis_matrix)), self.quat) #calculate new quaternions
         self.quat = new_quat
+        '''
         dxdt = np.matmul(self.state_matrix,state) + np.squeeze(np.matmul(self.control_matrix,self.control))
         return dxdt
     
     def forward_step(self) -> list[float]:
-        timerange = np.arange(self.time, self.time+self.timestep*self.horizon, self.timestep)
+        timerange = np.arange(self.time, self.time+(self.timestep*self.horizon), self.timestep)
         sol = scipy.integrate.odeint(
             self.compute_derivatives,
             self.state,
             timerange,
         )
+        self.time += self.timestep*self.horizon
         self.state = sol[-1]
         return sol
             

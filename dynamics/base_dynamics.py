@@ -40,7 +40,15 @@ class baseDynamics:
         state1 = np.concatenate((self.pos,self.vel), axis=None)   
         state2 = np.concatenate((euler,self.omega), axis=None) 
         self.state = np.concatenate((state1,state2), axis=None)
+        self.initial_state = self.state
 
+    def reset_state(self) -> None:
+        self.time = 0
+        self.pos = self.initial_state[0:3]
+        self.vel = self.initial_state[3:6]
+        self.euler = self.initial_state[6:9]
+        self.omega = self.initial_state[9:12]
+        self.initialize_state()
 
     def initialize_state_matrix(self) -> None:
         self.state_matrix = np.zeros((self.state.size,self.state.size))
