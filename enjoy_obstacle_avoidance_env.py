@@ -65,8 +65,8 @@ if __name__ == "__main__":
     pathPlanner = pathPlanner(
         goal_state = [0,10,10,0,0,0,0,0,0,0,0,0],
         path_planning_algorithm='VFH',
-        kwargs={'radius':2,'min_obstacle_distance':1,'iterations':1,},
-        max_distance=0.2,
+        kwargs={'radius':3,'min_obstacle_distance':1,'iterations':1,},
+        max_distance=0.3,
         interpolation_method='linear'
     )
     
