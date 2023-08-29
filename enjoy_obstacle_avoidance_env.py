@@ -34,7 +34,7 @@ if __name__ == "__main__":
     dynamics = quadcopterDynamics(
         timestep = 0.01,
         horizon = 10,
-        pos = np.array([0, 0, 0]),
+        pos = np.array([0, 0, 0.2]),
         omega = np.array([0, 0, 0]),
         coef_data = {'kf' : 3.7102e-5, 'km' : 7.6933e-7},
         quad_data = {
@@ -66,7 +66,7 @@ if __name__ == "__main__":
         goal_state = [0,10,10,0,0,0,0,0,0,0,0,0],
         path_planning_algorithm='VFH',
         kwargs={'radius':2,'min_obstacle_distance':1,'iterations':1,},
-        max_distance=0.3,
+        max_distance=0.2,
         interpolation_method='linear'
     )
     
@@ -107,7 +107,7 @@ if __name__ == "__main__":
         control_method='MPC',
         kwargs=kwargs,
         point_cloud_size=10000,
-        path_point_tolerance=0.25,
+        path_point_tolerance=0.15,
         point_cloud_radius=10,
     )
 
@@ -118,7 +118,7 @@ if __name__ == "__main__":
 
     env.add_obstacle(obstacle=obstacle_course)
 
-    renderer.plot(env.get_object_data())
+    #renderer.plot(env.get_object_data())
 
     time.sleep(1)
 
