@@ -137,9 +137,10 @@ class quadcopterDynamics(baseDynamics):
     def Q(self):
         # State cost
         Q = np.eye(self.state.size)
+        Q[5, 5] = 5.  # z vel
         Q[0, 0] = 10.  # x pos
         Q[1, 1] = 10.  # y pos
-        Q[2, 2] = 100.
+        Q[2, 2] = 100.  # z pos
         return Q
 
     @property

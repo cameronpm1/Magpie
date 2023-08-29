@@ -47,7 +47,8 @@ class pathPlanner(basePathPlanner):
         current_state = state
 
         if point_cloud is None:
-            next_location = [self.goal[0:3]/np.linalg.norm(self.goal[0:3])*0.25*self.algorithm.radius]
+            next_location = self.goal[0:3] - state[0:3]
+            next_location = [next_location/np.linalg.norm(next_location)*0.25*self.algorithm.radius]
         else:
             next_location = self.algorithm.compute_next_point(points=point_cloud, goal=self.goal-state_offset)
 
