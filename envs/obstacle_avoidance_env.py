@@ -330,6 +330,21 @@ class obstacleAvoidanceEnv():
         set path for testing purposes
         '''
         self.current_path = new_path
+
+    class PID():
+        def __init__(self) -> None:
+            pass
+
+        def compute_action(self) -> list[float]:
+            '''
+            return next action for satellite
+            satellite control has 9 variables: Fx, Fy, Fz, Mx, My, Mz, Nx, Ny, Nz 
+            (in that order)
+            Nx,Ny,Nz are the acceleration of the momentum wheels
+            there are 3 momentum wheels, each aligned w/ the respective axis
+            of the satelite
+            '''
+            pass
     
     class MPC():
 
