@@ -44,9 +44,10 @@ class obstacleAvoidanceEnv():
         self.control_method.update_state()
 
         self.time = 0
+        self.done = False
         self.current_path = None
 
-    def step(self) -> None:
+    def step(self) -> tuple(list[float], list[float], bool):
         if self.dynamic_obstacles:
             self.update_point_cloud()
         action = self.compute_next_action()
@@ -59,8 +60,12 @@ class obstacleAvoidanceEnv():
         self.check_reached_path_point()
         if self.current_path.size == 0:
             self.get_new_path()
+        return self.main_object.dynamics.state, action, self.done
+        
 
     def reset(self) -> None:
+        self.time = 0
+        self.done = False
         self.main_object.dynamics.reset_state()
         self.update_point_cloud()
         self.get_new_path()
@@ -76,6 +81,9 @@ class obstacleAvoidanceEnv():
             self.current_path = self.current_path[1:]
 
     def get_new_path(self) -> None:
+        if self.goal_check():
+            print('Goal state achieved')
+            self.done = True
         self.update_point_cloud()
         if self.point_cloud is None:
             point_cloud = self.point_cloud
@@ -162,8 +170,9 @@ class obstacleAvoidanceEnv():
         return False
     
     def goal_check(self):
-        if np.linalg.norm(self.path_planner.goal[0:3]-self.main_object.dynamics.state[0:3]) < self.path_point_tolerance:
-            self.current_path = self.current_path[1:]
+        if np.linalg.norm(self.path_planner.goal-self.main_object.dynamics.state) < self.path_point_tolerance:
+            return True
+        return False
 
     def set_new_path(self, new_path: list[list[float]]) -> None:
         '''

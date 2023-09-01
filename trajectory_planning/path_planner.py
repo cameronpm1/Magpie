@@ -36,10 +36,26 @@ class pathPlanner(basePathPlanner):
             kwargs=kwargs,
         )
 
-    def set_goal_state(self,
+    def set_goal_state(
+            self,
             goal_state: list[float,]
     ) -> None:
         self.goal = goal_state
+
+    def check_goal_safety(
+            self,
+            goals: list[list[float]],
+            point_cloud: Optional[list[list[float]]] = None,
+    ) -> bool:
+        if point_cloud is None:
+            return True
+        else:
+            '''
+            Make sure that goal points are still within safe distance of
+            current obstacles based on LiDAR data. Does not predict future
+            obstacle states, only current positions (quick).
+            '''
+            pass
 
     def compute_desired_path(
             self,
