@@ -37,7 +37,7 @@ class satelliteDynamics(baseDynamics):
         initial_orbit: Optional[Dict[str, Any]] = None,
         initial_state_data: Optional[Dict[str, Any]] = None,
         spacecraft_data: Optional[Dict[str, Any]] = None,
-        max_control: list[float] = [0.1,0.1,0.1,0.1,0.1,0.1,1000,1000,1000],
+        max_control: list[float] = [0.2,0.2,0.2,0.05,0.05,0.05,1000,1000,1000],
     ):
         
         super().__init__(

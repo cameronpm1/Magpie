@@ -50,7 +50,7 @@ class basePathPlanner():
             
             off_set = [0,0,0]
             computed_points = []
-            filler = np.zeros((9,))
+            filler = np.zeros((goal.size-3,))
 
             past_bin = None
 
@@ -66,7 +66,7 @@ class basePathPlanner():
                                                                     ):
                             if self.layers > 1:
                                 past_bin = [int(candidate[1]),int(candidate[2])]
-                            computed_points.append(self.histogram.get_reference_point_from_bin(bin=[candidate[1],candidate[2]],layer=j)+off_set)
+                            computed_points.append(self.histogram.get_target_point_from_bin(bin=[candidate[1],candidate[2]],goal=goal,layer=j)+off_set)
                             break
                 if self.iterations > 1:
                     off_set = computed_points[-1]

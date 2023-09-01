@@ -36,6 +36,11 @@ class pathPlanner(basePathPlanner):
             kwargs=kwargs,
         )
 
+    def set_goal_state(self,
+            goal_state: list[float,]
+    ) -> None:
+        self.goal = goal_state
+
     def compute_desired_path(
             self,
             state: list[float],
@@ -48,7 +53,10 @@ class pathPlanner(basePathPlanner):
 
         if point_cloud is None:
             next_location = self.goal[0:3] - state[0:3]
-            next_location = [next_location/np.linalg.norm(next_location)*0.25*self.algorithm.radius]
+            if np.linalg.norm(next_location) < 0.25*self.algorithm.radius:
+                next_location = [next_location]
+            else:
+                next_location = [next_location/np.linalg.norm(next_location)*0.25*self.algorithm.radius]
         else:
             next_location = self.algorithm.compute_next_point(points=point_cloud, goal=self.goal-state_offset)
 

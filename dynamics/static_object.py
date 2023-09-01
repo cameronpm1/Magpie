@@ -13,6 +13,7 @@ class staticObject():
             self,
             mesh: Union[Dict[str, list[Any]],Type[pv.DataSet]], #a list of vertices and lines connecting them, or VistMesh
             name: Optional[str] = None,
+            pos: list[float] = [0,0,0],
     ):
         if mesh is None:
             print('Error: no mesh data given')
@@ -24,8 +25,16 @@ class staticObject():
 
         self.name = name
         self.mesh = mesh
+        self.initial_pos = pos
+
         self.temp_mesh = copy.deepcopy(mesh)
         self.point_cloud = None
+
+    def update_points(self) -> None:
+        if self.vista:
+            self.temp_mesh.points += self.initial_pos
+        else:
+            self.temp_mesh['points'] += self.initial_pos
 
     def point_cloud_from_mesh(self, n) -> list[float]:
         '''
@@ -36,11 +45,11 @@ class staticObject():
 
         if not self.vista:
             print('Error: cannot generate point cloud data from simplified mesh, use pyvista, using corner points')
-            return self.mesh['points']
+            return self.temp_mesh['points']
 
         #calculate face areas and sample faces to generate points on
-        faces = self.mesh.faces.reshape(-1, 4)[:, 1:]
-        face_vertices = np.take(self.mesh.points,faces,axis=0)
+        faces = self.temp_mesh.faces.reshape(-1, 4)[:, 1:]
+        face_vertices = np.take(self.temp_mesh.points,faces,axis=0)
 
         areas = triangle_area(face_vertices)
         weighted_areas = areas/np.sum(areas)
@@ -64,7 +73,7 @@ class staticObject():
         point_cloud = []
 
         for i in range(n):
-            point = (sample_faces[i][0]*b_coord[i][0] + sample_faces[i][1]*b_coord[i][1] + sample_faces[i][2]*b_coord[i][2])/1000
+            point = (sample_faces[i][0]*b_coord[i][0] + sample_faces[i][1]*b_coord[i][1] + sample_faces[i][2]*b_coord[i][2])
             point_cloud.append(point)
 
         return np.array(point_cloud)

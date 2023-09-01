@@ -37,14 +37,18 @@ class obstacleAvoidanceEnv():
         
         self.point_cloud_plot = None
         self.point_cloud = None
+        self.dynamic_obstacles = False
 
         kwargs['dynamics'] = main_object.dynamics
         self.control_method = getattr(self,control_method)(**kwargs)
         self.control_method.update_state()
 
+        self.time = 0
         self.current_path = None
 
     def step(self) -> None:
+        if self.dynamic_obstacles:
+            self.update_point_cloud()
         action = self.compute_next_action()
         self.main_object.dynamics.set_control(action)
         self.main_object.step()
@@ -58,6 +62,7 @@ class obstacleAvoidanceEnv():
 
     def reset(self) -> None:
         self.main_object.dynamics.reset_state()
+        self.update_point_cloud()
         self.get_new_path()
 
     def compute_next_action(self) -> list[float]:
@@ -71,6 +76,7 @@ class obstacleAvoidanceEnv():
             self.current_path = self.current_path[1:]
 
     def get_new_path(self) -> None:
+        self.update_point_cloud()
         if self.point_cloud is None:
             point_cloud = self.point_cloud
         else:
@@ -83,9 +89,10 @@ class obstacleAvoidanceEnv():
             obstacle: Union[Type[dynamicObject],Type[staticObject]],
     ) -> None:
         
+        obstacle.update_points()
         self.obstacles.append(obstacle)
-        self.update_point_cloud()
-        self.get_new_path()
+        if isinstance(obstacle, dynamicObject):
+            self.dynamic_obstacles = True
 
     def remove_obstacle(
             self,
@@ -110,9 +117,6 @@ class obstacleAvoidanceEnv():
         return objects
     
     def generate_proximal_point_cloud(self) -> list[list[float]]:
-        if self.point_cloud_plot is None:
-            idx = np.random.randint(self.point_cloud_size, size=2000)
-            self.point_cloud_plot = self.point_cloud[idx,:]
 
         location = self.main_object.dynamics.get_pos()
 
@@ -123,16 +127,43 @@ class obstacleAvoidanceEnv():
                 if np.linalg.norm(new_point) < self.point_cloud_radius:
                     cloud.append(new_point)
 
+        if len(cloud) == 0:
+            return None
+        
         return cloud
     
     def update_point_cloud(self) -> None:
-        self.point_cloud = np.array([])
+        self.point_cloud = None
+        if len(self.obstacles) > 0:
+            object_cloud_size = int(self.point_cloud_size/len(self.obstacles))
         for obstacle in self.obstacles:
-            local_point_cloud = np.array(obstacle.point_cloud_from_mesh(n=self.point_cloud_size))
-            if self.point_cloud.size == 0:
+            local_point_cloud = np.array(obstacle.point_cloud_from_mesh(n=object_cloud_size))
+            if self.point_cloud is None:
                 self.point_cloud = local_point_cloud
             else:
-                self.point_cloud = np.concatenate(self.point_cloud,local_point_cloud)
+                self.point_cloud = np.concatenate((self.point_cloud,local_point_cloud))
+
+        if self.point_cloud_size > 2000:
+            idx = np.random.randint(self.point_cloud_size, size=2000)
+            self.point_cloud_plot = self.point_cloud[idx,:]
+        else:
+            self.point_cloud_plot = self.point_cloud
+
+    def collision_check(self):
+        if self.point_cloud is None:
+            return False
+        
+        location = self.main_object.dynamics.get_pos()
+
+        for point in self.point_cloud:
+            new_point = point-location
+            if np.linalg.norm(new_point) < self.path_planner.algorithm.distance_tolerance:
+                    return True
+        return False
+    
+    def goal_check(self):
+        if np.linalg.norm(self.path_planner.goal[0:3]-self.main_object.dynamics.state[0:3]) < self.path_point_tolerance:
+            self.current_path = self.current_path[1:]
 
     def set_new_path(self, new_path: list[list[float]]) -> None:
         '''

@@ -78,6 +78,10 @@ class gui(object):
         if 'goal' in object1.keys():
             self._ax1.scatter(object1['goal'][0],object1['goal'][1],object1['goal'][2])
         if 'point cloud' in object1.keys():
+            #remove point cloud data outside of axis limits
+            for i,point in reversed(list(enumerate(object1['point cloud']))):
+                if (point[0] < self.xlim[0] or point[0] > self.xlim[1]) or (point[1] < self.ylim[0] or point[1] > self.ylim[1]) or (point[2] < self.zlim[0] or point[2] > self.zlim[1]):
+                    object1['point cloud']=np.delete(object1['point cloud'], i, 0) 
             self._ax1.scatter(object1['point cloud'][:][:,0],object1['point cloud'][:][:,1],object1['point cloud'][:][:,2], color='r',s=8)
         if 'final goal' in object1.keys():
             self._ax1.scatter(object1['final goal'][0],object1['final goal'][1],object1['final goal'][2], color='g', s=40)

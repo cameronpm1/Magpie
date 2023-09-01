@@ -15,11 +15,13 @@ class dynamicObject(staticObject):
             dynamics: Type[baseDynamics],
             mesh: Union[Dict[str, list[Any]],Type[pv.DataSet]],
             name: Optional[str] = None,
+            pos: list[float] = [0,0,0],
     ):
         
         super().__init__(
             mesh = mesh,
             name = name,
+            pos=pos,
         )
 
         self.dynamics = dynamics

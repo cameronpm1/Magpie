@@ -57,6 +57,27 @@ class polarHistogram3D():
 
         return self.refrerence_histogram3D[int(bin[0])][int(bin[1])] * (self.layer_depth * (0.5+layer))
     
+    def get_target_point_from_bin(
+            self,
+            bin: list[int],
+            goal: list[float],
+            layer: int = 0,
+    ) -> list[float]:
+        '''
+        check if goal is inside chosen bin, 
+        if goal is inside bin and within range -> return goal
+        if goal is inside bin and within range -> return goal vector w/ appropriate distance from center
+        '''
+        
+        theta1,theta2,dist = self.convert_cartesian_to_polar(goal)
+        if int(theta1) == int(bin[0]) and int(theta2) == int(bin[1]):
+            if np.linalg.norm(goal) < (self.layer_depth * (0.5+layer)):
+                return goal
+            else:
+                return goal/np.linalg.norm(goal) * (self.layer_depth * (0.5+layer))
+        else:
+            return self.refrerence_histogram3D[int(bin[0])][int(bin[1])] * (self.layer_depth * (0.5+layer))
+    
     def get_bin_from_index(
             self,
             bin: list[int],
