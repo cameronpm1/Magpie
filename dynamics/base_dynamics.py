@@ -22,11 +22,11 @@ class baseDynamics:
     ):
         self.timestep = timestep
         self.horizon = horizon
-        self.pos = pos
-        self.vel = vel
+        self.pos = np.array(pos)
+        self.vel = np.array(vel)
         self.euler = np.zeros((3,))
         self.quat = quat
-        self.omega = omega
+        self.omega = np.array(omega)
         self.cf = cf
         self.time = 0
         self.state = None

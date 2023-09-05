@@ -1,3 +1,6 @@
+import sys
+sys.path.insert(1, 'c:/Users/Cameron Mehlman/Documents/Magpie')
+
 import numpy as np
 import pyvista as pv
 import matplotlib.pyplot as plt
@@ -47,7 +50,7 @@ class obstacleAvoidanceEnv():
         self.done = False
         self.current_path = None
 
-    def step(self) -> tuple(list[float], list[float], bool):
+    def step(self) -> tuple[list[float], list[float], bool]:
         if self.dynamic_obstacles:
             self.update_point_cloud()
         action = self.compute_next_action()
@@ -115,9 +118,17 @@ class obstacleAvoidanceEnv():
 
 
     def get_object_data(self) -> list[Dict[str, Any]]:
-        objects = []
-        objects.append(self.main_object.temp_mesh)
-        objects = copy.deepcopy(self.main_object.temp_mesh)
+        '''
+        package data for GUI
+        return:
+            main_object points and lines
+            current goal point
+            point cloud data ('if available')
+            final goal point
+        '''
+        objects = {}
+        objects['points'] = copy.deepcopy(self.main_object.temp_mesh['points'])
+        objects['lines'] = copy.deepcopy(self.main_object.temp_mesh['lines'])
         objects['goal'] = self.current_path[0]
         if self.point_cloud_plot is not None:
             objects['point cloud'] = self.point_cloud_plot
@@ -197,8 +208,8 @@ class obstacleAvoidanceEnv():
             self.horizon = horizon
             self.valued_actions = valued_actions
 
-            self.state_bounds = [lower_state_bounds,upper_state_bounds]
-            self.control_bounds = [lower_control_bounds,upper_control_bounds]
+            self.state_bounds = [np.array(lower_state_bounds),np.array(upper_state_bounds)]
+            self.control_bounds = [np.array(lower_control_bounds),np.array(upper_control_bounds)]
 
             self.initialize_optimization_parameters()
             self.initialize_discrete_matrices()
@@ -251,6 +262,7 @@ class obstacleAvoidanceEnv():
             '''
 
             solution = np.transpose(np.array(self.u[:,0:self.valued_actions].value))
+
             if solution.size == 1:
                 return solution
             elif solution is not None and isinstance(self.dynamics, quadcopterDynamics): #if quadcopter sim
@@ -262,6 +274,7 @@ class obstacleAvoidanceEnv():
 
 if __name__ == "__main__":
 
+    
     xmin = np.array([-np.inf,  -np.inf,  -np.inf, -np.inf, -np.inf, -np.inf, -0.2, -0.2, -2*np.pi, -.25, -.25, -.25])
     xmax = np.array([np.inf,   np.inf,   np.inf,   np.inf,  np.inf, np.inf, 0.2,  0.2,   2*np.pi,  .25, .25,  .25])
 
@@ -274,3 +287,8 @@ if __name__ == "__main__":
         'horizon' : 20,
         'valued_actions' : 1,
     }
+    
+
+    
+
+

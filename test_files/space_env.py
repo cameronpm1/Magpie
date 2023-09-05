@@ -68,7 +68,8 @@ if __name__ == "__main__":
                 [4,5],[4,6],[5,7],[6,7],
                 [0,4],[1,5],[2,6],[3,7]
             ])
-        }
+        },
+        name = 'satellite',
     )
 
 
@@ -152,8 +153,8 @@ if __name__ == "__main__":
     debris1 = dynamicObject(dynamics=debris1_dyn, mesh=ball1,name='debris1', pos=[-10, -10, 0])
     debris2 = dynamicObject(dynamics=debris2_dyn, mesh=ball2,name='debris1', pos=[5, 5, 3])
 
-    #env.add_obstacle(obstacle=debris1)
-    #env.add_obstacle(obstacle=debris2)
+    env.add_obstacle(obstacle=debris1)
+    env.add_obstacle(obstacle=debris2)
 
     env.reset()
 
