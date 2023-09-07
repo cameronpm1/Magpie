@@ -41,6 +41,12 @@ class basePathPlanner():
             self.layers = layers
             self.radius = radius
 
+        def input_points(
+            self, 
+            points: list[list[float]],
+        ) -> None:
+            self.histogram.input_points(points=points)
+
         def compute_next_point(
                 self,
                 points: list[list[float]],
@@ -53,6 +59,7 @@ class basePathPlanner():
             filler = np.zeros((goal.size-3,))
 
             past_bin = None
+            done = False
 
             for i in range(self.iterations):
                 self.histogram.input_points(points=np.array(points)-off_set)
@@ -66,8 +73,17 @@ class basePathPlanner():
                                                                     ):
                             if self.layers > 1:
                                 past_bin = [int(candidate[1]),int(candidate[2])]
-                            computed_points.append(self.histogram.get_target_point_from_bin(bin=[candidate[1],candidate[2]],goal=goal,layer=j)+off_set)
+                            target, done = self.histogram.get_target_point_from_bin(bin=[candidate[1],candidate[2]],goal=goal[0:3],layer=j)
+                            computed_points.append(target+off_set)
                             break
+                    if done:
+                        break
                 if self.iterations > 1:
                     off_set = computed_points[-1]
             return np.array(computed_points)
+        
+        def check_goal_safety(
+                self,
+                goal: list[float],
+        ) -> bool:
+            self.histogram.check_point_safety(min_distance=self.min_distance, point=goal)

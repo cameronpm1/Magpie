@@ -76,7 +76,7 @@ class gui(object):
                             [points[line[0]][1],points[line[1]][1]],
                             [points[line[0]][2],points[line[1]][2]], color="k")
         if 'goal' in object1.keys():
-            self._ax1.scatter(object1['goal'][0],object1['goal'][1],object1['goal'][2])
+            self._ax1.plot(object1['goal'][:,0],object1['goal'][:,1],object1['goal'][:,2])
         if 'point cloud' in object1.keys():
             #remove point cloud data outside of axis limits
             for i,point in reversed(list(enumerate(object1['point cloud']))):

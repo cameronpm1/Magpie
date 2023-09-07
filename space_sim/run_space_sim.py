@@ -3,35 +3,53 @@ sys.path.insert(1, 'c:/Users/Cameron Mehlman/Documents/Magpie')
 
 import hydra
 from omegaconf import DictConfig, OmegaConf
+from tqdm import tqdm
 import time
 
 from space_sim.make_env import make_env
 from envs.gui import Renderer
 
-@hydra.main(version_base=None, config_path="conf", config_name="config")
-def simulate_space_env(cfg : DictConfig) -> None:
-    env = make_env(cfg)
+def simulate_space_env(render=False) -> None:
 
-    renderer = Renderer(
-        xlim = [-5,5],
-        ylim = [-5,5],
-        zlim = [-5,5],
-        vista = False,
-    )
-    
-    env.reset()
-    renderer.plot(env.get_object_data())
+    @hydra.main(version_base=None, config_path="conf", config_name="config")
+    def simulate(cfg : DictConfig):
 
-    time.sleep(1)
+        env = make_env(cfg)
+        env.reset()
 
-    for i in range(2000):
-        env.step()
-        renderer.plot(env.get_object_data())
-    
-    '''
-    for i in range(2000):
-        env.step()
-    '''
+        if render:
+            renderer = Renderer(
+                xlim = [-30,30],
+                ylim = [-30,30],
+                zlim = [-30,30],
+                vista = False,
+            )
+            renderer.plot(env.get_object_data())
+
+        time.sleep(10)
+        timesteps = 5000
+        timestep = 0
+        done = False
+
+        for i in range(timesteps):
+            state,action,done,rew = env.step()
+            if i%15 == 0:
+                print('distance to goal:', env.get_distance_to_goal())
+            if done:
+                timestep = i
+                break
+            if render:
+                renderer.plot(env.get_object_data())
+
+        if done and rew>0:
+            print('Simulation successful, goal reached in', timestep, 'timesteps')
+        else:
+            if i < timesteps-1:
+                print('Simulation unsuccessful, ended early at timestep', timestep)
+            else:
+                print('Simulation unsuccesful, goal never reached')
+
+    simulate()
 
 if __name__ == "__main__":
-    simulate_space_env()
+    simulate_space_env(render=False)

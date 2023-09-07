@@ -65,7 +65,7 @@ def make_env(cfg):
         kwargs = kwargs,
     )
 
-    '''
+    
     for obstacle in cfg['obstacles']:
         stl = pv.read(cfg['obstacles'][obstacle]['stl'])
         stl.points *= cfg['obstacles'][obstacle]['stl_scale']
@@ -87,7 +87,7 @@ def make_env(cfg):
             pos = cfg['obstacles'][obstacle]['pos'])
         
         env.add_obstacle(obstacle=temp_obstacle)
-    '''
+    
 
     return env
     

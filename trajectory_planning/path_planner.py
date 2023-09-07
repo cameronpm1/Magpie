@@ -21,7 +21,7 @@ class pathPlanner(basePathPlanner):
             kwargs: Dict[str, Any],
             max_distance: float = 0.5,
             interpolation_method: str = 'linear',
-            avg_speed: float = 0,
+            avg_speed: float = 2,
             n: int = 20,
     ):
         self.goal = goal_state
@@ -42,20 +42,24 @@ class pathPlanner(basePathPlanner):
     ) -> None:
         self.goal = goal_state
 
+    def update_point_cloud(
+            self,
+            point_cloud: list[list[float]]
+    ) -> None:
+        self.algorithm.input_points(points=point_cloud)
+
     def check_goal_safety(
             self,
             goals: list[list[float]],
-            point_cloud: Optional[list[list[float]]] = None,
+            state: list[float] = None,
     ) -> bool:
-        if point_cloud is None:
-            return True
-        else:
-            '''
-            Make sure that goal points are still within safe distance of
-            current obstacles based on LiDAR data. Does not predict future
-            obstacle states, only current positions (quick).
-            '''
-            pass
+        for goal in goals:
+            goal = goal[0:3]
+            safe = self.algorithm.check_goal_safety(goal - state)
+            if not safe:
+                return False
+        return True
+
 
     def compute_desired_path(
             self,

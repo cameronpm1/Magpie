@@ -3,8 +3,6 @@ defaults:
   - override hydra/hydra_logging: disabled  
   - override hydra/job_logging: disabled
 
-seed: 1
-
 hydra:
   output_subdir: null  
   job:
@@ -12,7 +10,7 @@ hydra:
   run:
     dir: .
       
-
+seed: 1
 
 satellite:
   name: satellite
@@ -21,7 +19,7 @@ satellite:
     lines: [[0,1],[0,2],[1,3],[2,3],[4,5],[4,6],[5,7],[6,7],[0,4],[1,5],[2,6],[3,7]]
   dynamics:
     timestep: 3
-    horizon: 2
+    horizon: 5
     pos: [0, 0, 0]
     initial_orbit:
       a: 35786
@@ -38,13 +36,14 @@ satellite:
       mass: 4000
 
 path_planner:
-  goal_state: [2,2,2,0,0,0,0,0,0,0,0,0,0,0,0]
+  goal_state: [2,25,3,0,0,0,0,1.2,0,0,0,0,0,0,0]
   path_planning_algorithm: VFH
   kwargs:
-    radius: 4
-    min_obstacle_distance: 2
+    radius: 15
+    min_obstacle_distance: 5
     iterations: 1
-    distance_tolerance: 1.2
+    distance_tolerance: 1
+    layers: 3
   max_distance: 0.1
   interpolation_method: linear
 
@@ -52,7 +51,7 @@ env:
   control_method: MPC
   point_cloud_size: 100
   path_point_tolerance: 0.1
-  point_cloud_radius: 10
+  point_cloud_radius: 15
   kwargs:
     upper_state_bounds: [1e10,  1e10,  1e10, 1e10, 1e10, 1e10, 0.2, 0.2, 6.2832, .25, .25, .25, 1000, 1000, 1000]
     lower_state_bounds: [-1e10,  -1e10,  -1e10, -1e10, -1e10, -1e10, -0.2, -0.2, -6.2832, -.25, -.25, -.25, -1000, -1000, -1000]
@@ -68,7 +67,25 @@ obstacles:
     stl_scale: 0.001
   obstacle2:
     name: debris2
-    pos: [5, 5, 3]
+    pos: [10, 5, 3]
+    vel: [-0.0001, -0.0005, 0]
+    stl: stl_files/ball.stl
+    stl_scale: 0.00333
+  obstacle3:
+    name: debris2
+    pos: [20, 15, -3]
+    vel: [-0.0001, -0.0005, 0]
+    stl: stl_files/ball.stl
+    stl_scale: 0.00333
+  obstacle4:
+    name: debris2
+    pos: [0, 15, 5]
+    vel: [0.001, -0.0015, 0]
+    stl: stl_files/ball.stl
+    stl_scale: 0.00333
+  obstacle5:
+    name: debris2
+    pos: [15, 0, 2]
     vel: [-0.0001, -0.0005, 0]
     stl: stl_files/ball.stl
     stl_scale: 0.00333

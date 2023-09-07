@@ -29,6 +29,7 @@ class obstacleAvoidanceEnv():
             point_cloud_radius: float = 5,
             path_point_tolerance: float = 0.1,
             point_cloud_size: float = 3000,
+            goal_tolerance: float = 0.0001,
     ):
         
         self.main_object = main_object
@@ -36,6 +37,7 @@ class obstacleAvoidanceEnv():
         self.point_cloud_radius = point_cloud_radius
         self.point_cloud_size = point_cloud_size
         self.path_point_tolerance = path_point_tolerance
+        self.goal_tolerance = goal_tolerance
         self.obstacles = []
         
         self.point_cloud_plot = None
@@ -48,11 +50,11 @@ class obstacleAvoidanceEnv():
 
         self.time = 0
         self.done = False
+        self.reward = 0
         self.current_path = None
 
-    def step(self) -> tuple[list[float], list[float], bool]:
-        if self.dynamic_obstacles:
-            self.update_point_cloud()
+    def step(self) -> tuple[list[float], list[float], bool, int]:
+        self.collision_check()
         action = self.compute_next_action()
         self.main_object.dynamics.set_control(action)
         self.main_object.step()
@@ -60,34 +62,44 @@ class obstacleAvoidanceEnv():
         for obstacle in self.obstacles:
             if isinstance(obstacle,dynamicObject):
                 obstacle.step()
+        if self.dynamic_obstacles:
+            self.update_point_cloud()
         self.check_reached_path_point()
         if self.current_path.size == 0:
             self.get_new_path()
-        return self.main_object.dynamics.state, action, self.done
+        return self.main_object.dynamics.state, action, self.done, self.reward
         
+    def get_distance_to_goal(self) -> None:
+        return np.linalg.norm(self.path_planner.goal[0:3]-self.main_object.dynamics.get_pos())
 
     def reset(self) -> None:
         self.time = 0
         self.done = False
+        self.reward = 0
         self.main_object.dynamics.reset_state()
         self.update_point_cloud()
         self.get_new_path()
 
     def compute_next_action(self) -> list[float]:
         next_action = self.control_method.compute_action(goal=self.current_path[0])
-        #print(next_action)
-        #print(np.linalg.norm(self.main_object.dynamics.get_vel()))
         return next_action
 
     def check_reached_path_point(self) -> None:
         if np.linalg.norm(self.current_path[0][0:3]-self.main_object.dynamics.state[0:3]) < self.path_point_tolerance:
             self.current_path = self.current_path[1:]
+            if self.current_path.size > 0:
+                point_cloud = self.generate_proximal_point_cloud()
+                self.path_planner.update_point_cloud(point_cloud=point_cloud)
+                safe = self.path_planner.check_goal_safety(goals=self.current_path,state=self.main_object.dynamics.state[0:3])
+                if not safe:
+                    self.current_path = np.array([])
 
     def get_new_path(self) -> None:
         if self.goal_check():
-            print('Goal state achieved')
+            #print('Goal state achieved')
             self.done = True
-        self.update_point_cloud()
+            self.reward = 1
+        self.update_point_cloud(propogate=True)
         if self.point_cloud is None:
             point_cloud = self.point_cloud
         else:
@@ -129,7 +141,7 @@ class obstacleAvoidanceEnv():
         objects = {}
         objects['points'] = copy.deepcopy(self.main_object.temp_mesh['points'])
         objects['lines'] = copy.deepcopy(self.main_object.temp_mesh['lines'])
-        objects['goal'] = self.current_path[0]
+        objects['goal'] = self.current_path
         if self.point_cloud_plot is not None:
             objects['point cloud'] = self.point_cloud_plot
         objects['final goal'] = self.path_planner.goal[0:3]
@@ -151,7 +163,10 @@ class obstacleAvoidanceEnv():
         
         return cloud
     
-    def update_point_cloud(self) -> None:
+    def update_point_cloud(
+            self,
+            propogate: bool = False,
+        ) -> None:
         self.point_cloud = None
         if len(self.obstacles) > 0:
             object_cloud_size = int(self.point_cloud_size/len(self.obstacles))
@@ -160,28 +175,58 @@ class obstacleAvoidanceEnv():
             if self.point_cloud is None:
                 self.point_cloud = local_point_cloud
             else:
+                if propogate:
+                    local_point_cloud = self.propogate_point_cloud(obstacle, local_point_cloud)
                 self.point_cloud = np.concatenate((self.point_cloud,local_point_cloud))
 
+        #dont plot point clouds greater than 2000 points
         if self.point_cloud_size > 2000:
             idx = np.random.randint(self.point_cloud_size, size=2000)
             self.point_cloud_plot = self.point_cloud[idx,:]
         else:
             self.point_cloud_plot = self.point_cloud
 
-    def collision_check(self):
-        if self.point_cloud is None:
-            return False
-        
-        location = self.main_object.dynamics.get_pos()
+    def propogate_point_cloud(
+            self,
+            obstacle: Type[dynamicObject],
+            point_cloud: list[list[float]],
+            propagate_timesteps: int = 10,
+    ) -> list[list[float]]:
+        '''
+            calculate the point cloud location at each timestep in the future
+            for x timesteps and return combined point cloud data. ONLY based
+            on obstacles current velocity
 
-        for point in self.point_cloud:
-            new_point = point-location
-            if np.linalg.norm(new_point) < self.path_planner.algorithm.distance_tolerance:
-                    return True
-        return False
+            propagate_timesteps: calculate for x timesteps
+            obs_vel: velocity of the obstacle
+            avg_std: the average of the stds of the obstacles point cloud dist.
+            timestep: given obs_vel the amount of time it will take to travel 1 avg_std
+        '''
+        obs_vel = obstacle.dynamics.get_vel()
+        propogated_cloud = []
+        avg_std = np.average(np.std(point_cloud,axis=0))
+        timestep = avg_std/np.linalg.norm(obs_vel)
+
+        for point in point_cloud:
+            for i in range(propagate_timesteps):
+                propogated_cloud.append(obs_vel*timestep*i + point)
+                
+        return propogated_cloud
+
+
+    def collision_check(self) -> None:
+        if self.point_cloud is None:
+            pass
+        else:
+            location = self.main_object.dynamics.get_pos()
+
+            for point in self.point_cloud:
+                new_point = point-location
+                if np.linalg.norm(new_point) < self.path_planner.algorithm.histogram.distance_tol:
+                    self.done = True
     
     def goal_check(self):
-        if np.linalg.norm(self.path_planner.goal-self.main_object.dynamics.state) < self.path_point_tolerance:
+        if np.linalg.norm(self.path_planner.goal-self.main_object.dynamics.state) < self.goal_tolerance:
             return True
         return False
 
