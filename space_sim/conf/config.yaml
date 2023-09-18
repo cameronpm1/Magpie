@@ -4,9 +4,9 @@ defaults:
   - override hydra/job_logging: disabled
 
 hydra:
-  output_subdir: null  
+  output_subdir: null #space_sim/conf/outputs
   job:
-    name: space environment simulation # set job name
+    name: space environment simulation1 # set job name
   run:
     dir: .
       
@@ -36,56 +36,82 @@ satellite:
       mass: 4000
 
 path_planner:
-  goal_state: [2,25,3,0,0,0,0,1.2,0,0,0,0,0,0,0]
+  goal_state: [0,35,0,0,0,0,0,0,0,0,0,0,0,0,0]
   path_planning_algorithm: VFH
   kwargs:
     radius: 15
     min_obstacle_distance: 5
     iterations: 1
     distance_tolerance: 1
-    layers: 3
-  max_distance: 0.1
-  interpolation_method: linear
+    layers: 15
+  max_distance: 0.2
+  interpolation_method: spline
 
 env:
   control_method: MPC
-  point_cloud_size: 100
+  point_cloud_size: 400
   path_point_tolerance: 0.1
-  point_cloud_radius: 15
+  point_cloud_radius: 30
   kwargs:
     upper_state_bounds: [1e10,  1e10,  1e10, 1e10, 1e10, 1e10, 0.2, 0.2, 6.2832, .25, .25, .25, 1000, 1000, 1000]
     lower_state_bounds: [-1e10,  -1e10,  -1e10, -1e10, -1e10, -1e10, -0.2, -0.2, -6.2832, -.25, -.25, -.25, -1000, -1000, -1000]
     horizon: 20
     valued_actions: 1
 
+random:
+  on: False
+  n: 10
+  vel: 0.003
+  x_range: [-20,20]
+  y_range: [-5,40]
+  z_range: [-20,20]
+
 obstacles:
   obstacle1:
     name: debris1
-    pos: [-10, -10, 0]
-    vel: [0, 0.001, 0]
+    pos: [5, 8, 5]
+    vel: [-0.00416, 0, -0.00416]
     stl: stl_files/ball.stl
     stl_scale: 0.001
   obstacle2:
     name: debris2
-    pos: [10, 5, 3]
-    vel: [-0.0001, -0.0005, 0]
+    pos: [0, 20, -10]
+    vel: [0, 0, 0.001]
     stl: stl_files/ball.stl
-    stl_scale: 0.00333
+    stl_scale: 0.001
   obstacle3:
-    name: debris2
-    pos: [20, 15, -3]
-    vel: [-0.0001, -0.0005, 0]
+    name: debris3
+    pos: [0, 17, 0]
+    vel: [0, 0, 0]
     stl: stl_files/ball.stl
-    stl_scale: 0.00333
+    stl_scale: 0.001
   obstacle4:
-    name: debris2
-    pos: [0, 15, 5]
-    vel: [0.001, -0.0015, 0]
+    name: debris4
+    pos: [10, 24, 2]
+    vel: [-0.0012, 0, 0.0005]
     stl: stl_files/ball.stl
-    stl_scale: 0.00333
-  obstacle5:
-    name: debris2
-    pos: [15, 0, 2]
-    vel: [-0.0001, -0.0005, 0]
-    stl: stl_files/ball.stl
-    stl_scale: 0.00333
+    stl_scale: 0.001
+  #obstacle2:
+    #name: debris2
+    #pos: [10, 5, 3]
+    #vel: [-0.0001, -0.0005, 0]
+    #stl: stl_files/ball.stl
+    #stl_scale: 0.00333
+  #obstacle3:
+    #name: debris2
+    #pos: [20, 15, -3]
+    #vel: [-0.0001, -0.0005, 0]
+    #stl: stl_files/ball.stl
+    #stl_scale: 0.00333
+  #obstacle4:
+    #name: debris2
+    #pos: [0, 15, 5]
+    #vel: [0.001, -0.0015, 0]
+    #stl: stl_files/ball.stl
+    #stl_scale: 0.00333
+  #obstacle5:
+    #name: debris2
+    #pos: [15, 0, 2]
+    #vel: [-0.0001, -0.0005, 0]
+    #stl: stl_files/ball.stl
+    #stl_scale: 0.00333

@@ -80,7 +80,7 @@ def dcm_zyx(E):
       For transforming coordinates from the fixed frame to body frame,
       use the transpose of this DCM
       '''
-
+      
       c1 = np.cos(E[0])
       s1 = np.sin(E[0])
       c2 = np.cos(E[1])
@@ -131,3 +131,25 @@ def gaussian_prob(
                         exponent = np.around(-0.5*np.square(np.divide((x[i]-mu[i]),std[i])), decimals=8)
                         prob[i] = np.divide(1,std[i]*np.sqrt(np.pi*2))*np.exp(exponent)
       return prob
+
+def line_to_point(
+      line: list[float],
+      point: list[float],
+) -> tuple[float, float]:
+      '''
+      given a line AB (represented as a vector [x,y,z]), and a point (P)
+      in cartesian coordinates, returns the shortest distance between
+      the line and point (line CP), as well as the length of AC.
+      IMPORANT: assumes that the line starts at the origin 
+          P*
+          /|
+         / | 
+        /  |
+      A-----------B
+          C    
+      '''
+
+      CP = np.linalg.norm(np.cross(line,point)) / np.linalg.norm(line)
+      AC = np.dot(line,point) / np.linalg.norm(line)
+
+      return CP, AC

@@ -5,6 +5,7 @@ import numpy as np
 import pyvista as pv
 from typing import Any, Dict, Type, Optional
 import copy
+import time
 import matplotlib.pyplot as plt
 from scipy import interpolate
 
@@ -21,8 +22,8 @@ class pathPlanner(basePathPlanner):
             kwargs: Dict[str, Any],
             max_distance: float = 0.5,
             interpolation_method: str = 'linear',
-            avg_speed: float = 2,
-            n: int = 20,
+            avg_speed: float = 0.5,
+            n: int = 50,
     ):
         self.goal = goal_state
         self.avg_speed = avg_speed
@@ -46,7 +47,10 @@ class pathPlanner(basePathPlanner):
             self,
             point_cloud: list[list[float]]
     ) -> None:
-        self.algorithm.input_points(points=point_cloud)
+        if point_cloud is None:
+            self.algorithm.reset_map()
+        else:
+            self.algorithm.input_points(points=point_cloud)
 
     def check_goal_safety(
             self,
@@ -74,11 +78,17 @@ class pathPlanner(basePathPlanner):
         if point_cloud is None:
             next_location = self.goal[0:3] - state[0:3]
             if np.linalg.norm(next_location) < 0.25*self.algorithm.radius:
-                next_location = [next_location]
+                next_location = [current_state[0:3] - state[0:3], next_location]
             else:
-                next_location = [next_location/np.linalg.norm(next_location)*0.25*self.algorithm.radius]
+                next_location = [current_state[0:3] - state[0:3], next_location/np.linalg.norm(next_location)*0.25*self.algorithm.radius]
         else:
-            next_location = self.algorithm.compute_next_point(points=point_cloud, goal=self.goal-state_offset)
+            goal = self.goal-state_offset
+            if np.linalg.norm(goal[0:3]) < self.algorithm.get_layer_size():
+                next_location = [current_state - state_offset, goal]
+            else:
+                #t0 = time.time()
+                next_location = self.algorithm.compute_next_point(points=point_cloud, goal=goal)
+                #print(time.time() - t0)
 
         if self.interpolation_method == 'linear':
             path = np.array([])
@@ -98,7 +108,7 @@ class pathPlanner(basePathPlanner):
                     path = np.concatenate((path,new_path),axis=0)
                 current_state = next_state
         elif self.interpolation_method == 'spline':
-            path = self.spline_interpolator(next_location,pts=self.n)
+            path = self.spline_interpolator(next_location+state[0:len(next_location[0])],pts=self.n)
             if len(path) == 0:
                 return []
             else:
@@ -125,12 +135,13 @@ class pathPlanner(basePathPlanner):
     def spline_interpolator(
             self,
             trajectory: list[list[float]],
-            pts: int = 10
+            pts: int = 50
     ) -> list[float]:
-        
-        #print(trajectory)
+        k = 2
+        if k >= len(trajectory):
+            k = len(trajectory)-1
 
-        tck, u = interpolate.splprep([trajectory[:,0],trajectory[:,1], trajectory[:,2]],k=2, s=2)
+        tck, u = interpolate.splprep([trajectory[:,0],trajectory[:,1], trajectory[:,2]],k=k, s=2)
         u_fine = np.linspace(0,1,pts)
         x, y, z = interpolate.splev(u_fine, tck)
         points = []

@@ -9,13 +9,14 @@ import time
 from space_sim.make_env import make_env
 from envs.gui import Renderer
 
-def simulate_space_env(render=False) -> None:
+def simulate_space_env(render=False,verbose=False,pforce=0) -> None:
 
     @hydra.main(version_base=None, config_path="conf", config_name="config")
     def simulate(cfg : DictConfig):
 
         env = make_env(cfg)
         env.reset()
+        env.set_perturbation_force(pforce)
 
         if render:
             renderer = Renderer(
@@ -34,7 +35,8 @@ def simulate_space_env(render=False) -> None:
         for i in range(timesteps):
             state,action,done,rew = env.step()
             if i%15 == 0:
-                print('distance to goal:', env.get_distance_to_goal())
+                if verbose:
+                    print('distance to goal:', env.get_distance_to_goal())
             if done:
                 timestep = i
                 break
@@ -52,4 +54,13 @@ def simulate_space_env(render=False) -> None:
     simulate()
 
 if __name__ == "__main__":
-    simulate_space_env(render=False)
+
+    '''
+    pforces = [5.0,10,15,20,25]
+    iter = 3
+    for p in pforces:
+        print(p)
+        for i in range(iter):
+            simulate_space_env(render=False,verbose=False,pforce=p)
+    '''
+    simulate_space_env(render=False,verbose=False)

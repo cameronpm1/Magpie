@@ -15,6 +15,7 @@ from dynamics.dynamic_object import dynamicObject
 from dynamics.static_object import staticObject
 from dynamics.quad_dynamics import quadcopterDynamics
 from envs.gui import gui
+from util.util import line_to_point
 from trajectory_planning.path_planner import pathPlanner
 
 
@@ -30,6 +31,8 @@ class obstacleAvoidanceEnv():
             path_point_tolerance: float = 0.1,
             point_cloud_size: float = 3000,
             goal_tolerance: float = 0.0001,
+            time_tolerance: float = 300,
+            perturbation_force: Optional[float] = None
     ):
         
         self.main_object = main_object
@@ -38,7 +41,9 @@ class obstacleAvoidanceEnv():
         self.point_cloud_size = point_cloud_size
         self.path_point_tolerance = path_point_tolerance
         self.goal_tolerance = goal_tolerance
+        self.time_tolerance = time_tolerance
         self.obstacles = []
+        self.perturbation_force = perturbation_force
         
         self.point_cloud_plot = None
         self.point_cloud = None
@@ -52,6 +57,15 @@ class obstacleAvoidanceEnv():
         self.done = False
         self.reward = 0
         self.current_path = None
+        self.expected_time = None
+        
+        '''
+        TO DO: the mpc controller has bad velocity control, as a result
+        we cannot predict vehicle speed until it is already moving,
+        Thus, we must recompute a trajectory after the first
+        few timesteps
+        '''
+        self.first_goal = True #has first goal been reached?
 
     def step(self) -> tuple[list[float], list[float], bool, int]:
         self.collision_check()
@@ -61,16 +75,33 @@ class obstacleAvoidanceEnv():
         self.control_method.update_state()
         for obstacle in self.obstacles:
             if isinstance(obstacle,dynamicObject):
+                if self.perturbation_force is not None:
+                    prob = 0.1
+                    a = np.random.random()
+                    if a <= prob:
+                        pforce = np.random.random((3,))*2*self.perturbation_force - self.perturbation_force
+                        control = np.concatenate((pforce,np.zeros((obstacle.dynamics.control.size-3,))))
+                        obstacle.dynamics.set_control(control)
+                    else:
+                        obstacle.dynamics.set_control(np.zeros((obstacle.dynamics.control.size,)))
                 obstacle.step()
         if self.dynamic_obstacles:
-            self.update_point_cloud()
+            self.update_point_cloud(propagate=False)
         self.check_reached_path_point()
         if self.current_path.size == 0:
+            self.first_goal = True
             self.get_new_path()
+        self.time += 1
         return self.main_object.dynamics.state, action, self.done, self.reward
         
     def get_distance_to_goal(self) -> None:
         return np.linalg.norm(self.path_planner.goal[0:3]-self.main_object.dynamics.get_pos())
+    
+    def set_perturbation_force(
+            self, 
+            pforce : float,
+    ) -> None:
+        self.perturbation_force = pforce
 
     def reset(self) -> None:
         self.time = 0
@@ -83,15 +114,33 @@ class obstacleAvoidanceEnv():
     def compute_next_action(self) -> list[float]:
         next_action = self.control_method.compute_action(goal=self.current_path[0])
         return next_action
+    
+    def compute_schedule(
+            self,
+            speed: float,
+    ) -> None:
+        time = []
+        time.append(np.linalg.norm(self.current_path[0][0:3]-self.main_object.dynamics.get_pos())/speed)
+        for i in range(len(self.current_path)-1):
+            time.append(time[-1] + np.linalg.norm(self.current_path[i+1][0:3]-self.current_path[i][0:3])/speed)
+        self.expected_time = time
+
 
     def check_reached_path_point(self) -> None:
         if np.linalg.norm(self.current_path[0][0:3]-self.main_object.dynamics.state[0:3]) < self.path_point_tolerance:
+            if self.first_goal:
+                self.compute_schedule(self.main_object.dynamics.get_speed())
+                self.first_goal = False
+                self.get_new_path()
+            #print('['+str(self.current_path[0][0])+','+str(self.current_path[0][1])+','+str(self.current_path[0][2])+'],')
             self.current_path = self.current_path[1:]
             if self.current_path.size > 0:
+                self.compute_schedule(self.main_object.dynamics.get_speed())
                 point_cloud = self.generate_proximal_point_cloud()
                 self.path_planner.update_point_cloud(point_cloud=point_cloud)
                 safe = self.path_planner.check_goal_safety(goals=self.current_path,state=self.main_object.dynamics.state[0:3])
                 if not safe:
+                    print('Obstacle has become too close to path, computing new path')
                     self.current_path = np.array([])
 
     def get_new_path(self) -> None:
@@ -99,13 +148,13 @@ class obstacleAvoidanceEnv():
             #print('Goal state achieved')
             self.done = True
             self.reward = 1
-        self.update_point_cloud(propogate=True)
+        self.update_point_cloud(propagate=True)
         if self.point_cloud is None:
             point_cloud = self.point_cloud
         else:
             point_cloud = self.generate_proximal_point_cloud()
         new_path = self.path_planner.compute_desired_path(state=self.main_object.dynamics.state, point_cloud=point_cloud)
-        self.current_path = new_path[1:]
+        self.current_path = new_path
 
     def add_obstacle(
             self,
@@ -114,8 +163,9 @@ class obstacleAvoidanceEnv():
         
         obstacle.update_points()
         self.obstacles.append(obstacle)
-        if isinstance(obstacle, dynamicObject):
-            self.dynamic_obstacles = True
+        if not self.dynamic_obstacles:
+            if isinstance(obstacle, dynamicObject):
+                self.dynamic_obstacles = True
 
     def remove_obstacle(
             self,
@@ -148,6 +198,13 @@ class obstacleAvoidanceEnv():
         return objects
     
     def generate_proximal_point_cloud(self) -> list[list[float]]:
+        '''
+        return all points in env within point_cloud_radius 
+        returns points location in relation to spacecraft
+        '''
+
+        if self.point_cloud is None:
+            return None
 
         location = self.main_object.dynamics.get_pos()
 
@@ -157,7 +214,7 @@ class obstacleAvoidanceEnv():
                 new_point = point-location
                 if np.linalg.norm(new_point) < self.point_cloud_radius:
                     cloud.append(new_point)
-
+ 
         if len(cloud) == 0:
             return None
         
@@ -165,32 +222,34 @@ class obstacleAvoidanceEnv():
     
     def update_point_cloud(
             self,
-            propogate: bool = False,
+            propagate: bool = True,
         ) -> None:
         self.point_cloud = None
         if len(self.obstacles) > 0:
             object_cloud_size = int(self.point_cloud_size/len(self.obstacles))
         for obstacle in self.obstacles:
             local_point_cloud = np.array(obstacle.point_cloud_from_mesh(n=object_cloud_size))
+            if not self.first_goal and propagate:
+                local_point_cloud = self.propagate_point_cloud(obstacle, local_point_cloud)
             if self.point_cloud is None:
                 self.point_cloud = local_point_cloud
             else:
-                if propogate:
-                    local_point_cloud = self.propogate_point_cloud(obstacle, local_point_cloud)
                 self.point_cloud = np.concatenate((self.point_cloud,local_point_cloud))
 
         #dont plot point clouds greater than 2000 points
+        self.point_cloud_plot = copy.deepcopy(self.point_cloud)
+        '''
         if self.point_cloud_size > 2000:
             idx = np.random.randint(self.point_cloud_size, size=2000)
             self.point_cloud_plot = self.point_cloud[idx,:]
         else:
             self.point_cloud_plot = self.point_cloud
+        '''
 
-    def propogate_point_cloud(
+    def propagate_point_cloud(
             self,
             obstacle: Type[dynamicObject],
             point_cloud: list[list[float]],
-            propagate_timesteps: int = 10,
     ) -> list[list[float]]:
         '''
             calculate the point cloud location at each timestep in the future
@@ -202,6 +261,42 @@ class obstacleAvoidanceEnv():
             avg_std: the average of the stds of the obstacles point cloud dist.
             timestep: given obs_vel the amount of time it will take to travel 1 avg_std
         '''
+
+        obs_pos = obstacle.dynamics.get_pos()
+        obs_vel = obstacle.dynamics.get_vel()
+
+        obs_speed = obstacle.dynamics.get_speed()
+
+        new_cloud = point_cloud
+
+        for i,goal in enumerate(self.current_path):
+            rel_goal = goal[0:3]-obs_pos
+            min_distance, dist_traveled = line_to_point(line = obs_vel, point = rel_goal)
+            if dist_traveled < 0:
+                continue
+            else:
+                if min_distance < self.path_planner.algorithm.min_distance:
+                    time = dist_traveled/obs_speed
+                    multiplier = 1/6 #how far to propogate (fraction of total distance between object and impact)
+                    if abs(time-self.expected_time[i]) < self.time_tolerance:
+                        print('Potential obstacle collision detected, propogating obstacle location')
+                        std = 0
+                        for point in point_cloud:
+                            rel_point = point-obs_pos
+                            std += (np.dot(rel_point,obs_vel)/np.linalg.norm(obs_vel))**2
+                        std /= len(point_cloud)
+
+                        vel_step = obs_vel/obs_speed * std
+                        propogations = np.ceil((dist_traveled*multiplier + self.path_planner.algorithm.min_distance)/std)
+                        forward_step = (obs_vel/obs_speed * dist_traveled*multiplier)
+                        new_cloud += forward_step
+                        for j in range(int(propogations)):
+                            prop_obs = (point_cloud - obs_pos)*(j/propogations*3+1) + obs_pos + (j+1)*vel_step + forward_step
+                            new_cloud = np.concatenate((new_cloud,prop_obs))
+                        return new_cloud
+        
+        return new_cloud
+        '''
         obs_vel = obstacle.dynamics.get_vel()
         propogated_cloud = []
         avg_std = np.average(np.std(point_cloud,axis=0))
@@ -210,8 +305,8 @@ class obstacleAvoidanceEnv():
         for point in point_cloud:
             for i in range(propagate_timesteps):
                 propogated_cloud.append(obs_vel*timestep*i + point)
-                
         return propogated_cloud
+        '''
 
 
     def collision_check(self) -> None:

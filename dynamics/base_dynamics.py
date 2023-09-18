@@ -12,7 +12,8 @@ class baseDynamics:
         horizon: int = 10,
         pos: list[float] = np.array([0.0, 0.0, 0.0]), #initial position
         vel: list[float] = np.array([0.0, 0.0, 0.0]), #initial velocity
-        quat: list[float] = np.array([1.0, 0.0, 0.0, 0.0]), #initial orientation of body to cf
+        euler: list[float] = np.array([0.0, 0.0, 0.0]), #initial euler angles
+        #quat: list[float] = np.array([1.0, 0.0, 0.0, 0.0]), #initial orientation of body to cf
         omega: list[float] = np.array([0.0, 0.0, 0.0]), #angular velocity vector
         cf: list[list[float]] = np.array([[1.0, 0.0, 0.0],
                                           [0.0, 1.0, 0.0],
@@ -24,8 +25,8 @@ class baseDynamics:
         self.horizon = horizon
         self.pos = np.array(pos)
         self.vel = np.array(vel)
-        self.euler = np.zeros((3,))
-        self.quat = quat
+        self.euler = euler
+        #self.quat = quat
         self.omega = np.array(omega)
         self.cf = cf
         self.time = 0
@@ -35,10 +36,8 @@ class baseDynamics:
         self.control_matrix = None
 
     def initialize_state(self) -> None:
-        euler = euler_from_quaternion(self.quat)
-        self.euler = euler
         state1 = np.concatenate((self.pos,self.vel), axis=None)   
-        state2 = np.concatenate((euler,self.omega), axis=None) 
+        state2 = np.concatenate((self.euler,self.omega), axis=None) 
         self.state = np.concatenate((state1,state2), axis=None)
         self.initial_state = self.state
 
@@ -64,6 +63,9 @@ class baseDynamics:
     
     def get_omega(self) -> list[float]:
         return self.state[9:12]
+    
+    def get_speed(self) -> float:
+        return np.linalg.norm(self.state[3:6])
 
     def forward_dynamics(self):
         pass

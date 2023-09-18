@@ -27,7 +27,8 @@ class satelliteDynamics(baseDynamics):
         horizon: int = 10,
         pos: list[float] = np.array([0.0, 0.0, 0.0]), #initial position w/ respect to orbit
         vel: list[float] = np.array([0.0, 0.0, 0.0]), #initial velocity w/ respect to orbit
-        quat: list[float] = np.array([1.0, 0.0, 0.0, 0.0]), #initial orientation of body to cf
+        euler: list[float] = np.array([0.0, 0.0, 0.0]), #initial euler angles
+        #quat: list[float] = np.array([1.0, 0.0, 0.0, 0.0]), #initial orientation of body to cf
         omega: list[float] = np.array([0.0, 0.0, 0.0]), #angular velocity vector
         cf: list[list[float]] = np.array([
             [0.0, 0.0, -1.0],
@@ -37,17 +38,17 @@ class satelliteDynamics(baseDynamics):
         initial_orbit: Optional[Dict[str, Any]] = None,
         initial_state_data: Optional[Dict[str, Any]] = None,
         spacecraft_data: Optional[Dict[str, Any]] = None,
-        max_control: list[float] = [1,1,1,0.05,0.05,0.05,1000,1000,1000],
+        max_control: list[float] = [0.3,0.3,0.3,0.1,0.1,0.1,1000,1000,1000],
     ):
         
         super().__init__(
-            timestep = timestep,
-            horizon = horizon,
-            pos = pos,
-            vel = vel,
-            quat = quat,
-            omega = omega,
-            cf = cf,
+            timestep=timestep,
+            horizon=horizon,
+            pos=pos,
+            vel=vel,
+            euler=euler,
+            omega=omega,
+            cf=cf,
         )
 
         if initial_orbit is None:

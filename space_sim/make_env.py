@@ -65,28 +65,63 @@ def make_env(cfg):
         kwargs = kwargs,
     )
 
+    if cfg['obstacles'] is None:
+        cfg['obstacles'] = []
+
     
-    for obstacle in cfg['obstacles']:
-        stl = pv.read(cfg['obstacles'][obstacle]['stl'])
-        stl.points *= cfg['obstacles'][obstacle]['stl_scale']
+    if bool(cfg['random'][True]):
+        for n in range(cfg['random']['n']):
+            stl = pv.read(cfg['obstacles']['obstacle1']['stl'])
+            stl.points *= cfg['obstacles']['obstacle1']['stl_scale']
 
-        obs_dynamics = satelliteDynamics(
-            timestep = cfg['satellite']['dynamics']['timestep'],
-            horizon = cfg['satellite']['dynamics']['horizon'],
-            pos = np.array(cfg['obstacles'][obstacle]['pos']),
-            vel = np.array(cfg['obstacles'][obstacle]['vel']),
-            initial_orbit = orbit_params,
-            initial_state_data = cfg['satellite']['dynamics']['initial_state_data'],
-            spacecraft_data = cfg['satellite']['dynamics']['spacecraft_data']
-        )
+            xlim = cfg['random']['x_range']
+            ylim = cfg['random']['y_range']
+            zlim = cfg['random']['z_range']
+            pos = [np.random.random()*(xlim[1]-xlim[0])+xlim[0], np.random.random()*(ylim[1]-ylim[0])+ylim[0], np.random.random()*(zlim[1]-zlim[0])+zlim[0]]
+            vel = np.random.random(3,)
+            vel = vel/np.linalg.norm(vel)*(cfg['random']['vel']*np.random.random())
 
-        temp_obstacle = dynamicObject(
-            dynamics = obs_dynamics, 
-            mesh = stl,
-            name = cfg['obstacles'][obstacle]['name'], 
-            pos = cfg['obstacles'][obstacle]['pos'])
-        
-        env.add_obstacle(obstacle=temp_obstacle)
+            obs_dynamics = satelliteDynamics(
+                timestep = cfg['satellite']['dynamics']['timestep'],
+                horizon = cfg['satellite']['dynamics']['horizon'],
+                pos = pos,
+                vel = vel,
+                initial_orbit = orbit_params,
+                initial_state_data = cfg['satellite']['dynamics']['initial_state_data'],
+                spacecraft_data = cfg['satellite']['dynamics']['spacecraft_data']
+            )
+
+            temp_obstacle = dynamicObject(
+                dynamics = obs_dynamics, 
+                mesh = stl,
+                name = cfg['obstacles']['obstacle1']['name'], 
+                pos = cfg['obstacles']['obstacle1']['pos'])
+            
+            env.add_obstacle(obstacle=temp_obstacle)
+    else:
+        for obstacle in cfg['obstacles']:
+            
+
+            stl = pv.read(cfg['obstacles'][obstacle]['stl'])
+            stl.points *= cfg['obstacles'][obstacle]['stl_scale']
+
+            obs_dynamics = satelliteDynamics(
+                timestep = cfg['satellite']['dynamics']['timestep'],
+                horizon = cfg['satellite']['dynamics']['horizon'],
+                pos = np.array(cfg['obstacles'][obstacle]['pos']),
+                vel = np.array(cfg['obstacles'][obstacle]['vel']),
+                initial_orbit = orbit_params,
+                initial_state_data = cfg['satellite']['dynamics']['initial_state_data'],
+                spacecraft_data = cfg['satellite']['dynamics']['spacecraft_data']
+            )
+
+            temp_obstacle = dynamicObject(
+                dynamics = obs_dynamics, 
+                mesh = stl,
+                name = cfg['obstacles'][obstacle]['name'], 
+                pos = cfg['obstacles'][obstacle]['pos'])
+            
+            env.add_obstacle(obstacle=temp_obstacle)
     
 
     return env

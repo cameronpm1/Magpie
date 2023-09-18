@@ -84,11 +84,15 @@ class polarHistogram3D():
     ) -> list[float]:
         
         return self.histogram3D[int(bin[0])][int(bin[1])]
+    
+    def reset_histogram(self) -> None:
+        self.histogram3D[:] = 0
 
     def input_points(
             self, 
             points: list[list[float]],
     ) -> None:
+        #t0 = time.time()
         self.points = points
         self.histogram3D[:] = 0
         self.histogram_calc_storage = np.zeros((self.sections,self.sections,self.layers,3))
@@ -130,6 +134,7 @@ class polarHistogram3D():
                         layer[3:6] += np.multiply(-self.histogram_calc_storage[i][j][k]*2,layer[0:3]) + np.multiply(layer[6],np.square(layer[0:3]))
                         layer[3:6] /= layer[6]
                         layer[3:6] = np.sqrt(layer[3:6])
+        #print(time.time() - t0)
 
     def initialize_reference_histogram3D(self) -> None:
         '''
@@ -151,18 +156,29 @@ class polarHistogram3D():
             self,
             point: list[float],
             layer: int = 0,
+            previous: list[int] = None,
+            previous2: list[int] = None,
     ) -> list[list[float]]:
 
         sorted_bins = []
-
+        #theta1,theta2,layerp = self.convert_cartesian_to_polar(point)
         for i in range(self.sections):
             for j in range(self.sections):
                 if (self.histogram3D[i][j][layer][0:3] == [0,0,0]).all():
-                    angle = np.arccos(np.dot(point[0:3],self.refrerence_histogram3D[i][j]) / (np.linalg.norm(point[0:3])*np.linalg.norm(self.refrerence_histogram3D[i][j])))
-                    cost = angle
-                    '''
-                    write a more complex cost function?
-                    '''
+                    if previous is None:
+                        angle = np.arccos(np.dot(point[0:3],self.refrerence_histogram3D[i][j]) / (np.linalg.norm(point[0:3])*np.linalg.norm(self.refrerence_histogram3D[i][j])))
+                        cost = angle
+                    else:
+                        previous_point, filler = self.get_target_point_from_bin(bin=previous,goal=point[0:3],layer=layer-1)
+                        current_point, filler = self.get_target_point_from_bin(bin=[i,j],goal=point[0:3],layer=layer)
+                        angle1 = np.arccos(np.clip(np.dot(point[0:3]-previous_point,current_point-previous_point) / (np.linalg.norm(point[0:3]-previous_point)*np.linalg.norm(current_point-previous_point)),-1,1))
+                        cost = angle1
+                        #if i == int(theta1) and j == int(theta2):
+                        #    print(cost)
+                        if previous2 is not None:
+                            previous_point2, filler = self.get_target_point_from_bin(bin=previous2,goal=point[0:3],layer=layer-2)
+                            angle2 = np.arccos(np.clip(np.dot(previous_point-previous_point2,current_point-previous_point) / (np.linalg.norm(previous_point-previous_point2)*np.linalg.norm(current_point-previous_point)),-1,1))
+                            cost += angle2 * 0.2
                     sorted_bins.append([cost,i,j,layer])
 
         sorted_bins = np.array(sorted_bins)
@@ -198,9 +214,9 @@ class polarHistogram3D():
             min_distance: float,
             point: list[float],           
     ) -> bool:
-        
+        #t0 = time.time()
         theta1,theta2,dist = self.convert_cartesian_to_polar(point)
-        fs = 0.9 #factor of safety, point must be more than 10% closer to min_distance to change route
+        fs = 0.4 #factor of safety, point must be more than 10% closer to min_distance to change route
 
         if dist > self.radius:
             return True
@@ -248,6 +264,7 @@ class polarHistogram3D():
                     fobstacle_probability = min(obstacle_probability)
                 if fobstacle_probability > self.probability_tol or np.linalg.norm(point-obstacle) < min_distance*fs:
                     return False  
+        #print(time.time() - t0)
         return True
 
     def confirm_candidate_distance(

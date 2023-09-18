@@ -1,0 +1,162 @@
+seed: 1
+satellite:
+  name: satellite
+  mesh:
+    points:
+    - - 1.0
+      - 0.5
+      - 0.5
+    - - -1.0
+      - 0.5
+      - 0.5
+    - - 1.0
+      - 0.5
+      - -0.5
+    - - -1.0
+      - 0.5
+      - -0.5
+    - - 1.0
+      - -0.5
+      - 0.5
+    - - -1.0
+      - -0.5
+      - 0.5
+    - - 1.0
+      - -0.5
+      - -0.5
+    - - -1.0
+      - -0.5
+      - -0.5
+    lines:
+    - - 0
+      - 1
+    - - 0
+      - 2
+    - - 1
+      - 3
+    - - 2
+      - 3
+    - - 4
+      - 5
+    - - 4
+      - 6
+    - - 5
+      - 7
+    - - 6
+      - 7
+    - - 0
+      - 4
+    - - 1
+      - 5
+    - - 2
+      - 6
+    - - 3
+      - 7
+  dynamics:
+    timestep: 3
+    horizon: 5
+    pos:
+    - 0
+    - 0
+    - 0
+    initial_orbit:
+      a: 35786
+      ecc: 0.0
+      inc: 1.85
+      raan: 49.526
+      argp: 286.537
+      nu: 0
+    initial_state_data:
+      momentum_wheel_vel:
+      - 0
+      - 0
+      - 0
+    spacecraft_data:
+      J_sc:
+      - 17000.0
+      - 27000.0
+      - 27000.0
+      alpha:
+      - 0.8
+      - 0.8
+      - 0.8
+      mass: 4000
+path_planner:
+  goal_state:
+  - 0
+  - 26
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  path_planning_algorithm: VFH
+  kwargs:
+    radius: 25
+    min_obstacle_distance: 5
+    iterations: 1
+    distance_tolerance: 1
+    layers: 15
+  max_distance: 0.2
+  interpolation_method: spline
+env:
+  control_method: MPC
+  point_cloud_size: 20
+  path_point_tolerance: 0.1
+  point_cloud_radius: 30
+  kwargs:
+    upper_state_bounds:
+    - 10000000000.0
+    - 10000000000.0
+    - 10000000000.0
+    - 10000000000.0
+    - 10000000000.0
+    - 10000000000.0
+    - 0.2
+    - 0.2
+    - 6.2832
+    - 0.25
+    - 0.25
+    - 0.25
+    - 1000
+    - 1000
+    - 1000
+    lower_state_bounds:
+    - -10000000000.0
+    - -10000000000.0
+    - -10000000000.0
+    - -10000000000.0
+    - -10000000000.0
+    - -10000000000.0
+    - -0.2
+    - -0.2
+    - -6.2832
+    - '-.25'
+    - '-.25'
+    - '-.25'
+    - -1000
+    - -1000
+    - -1000
+    horizon: 20
+    valued_actions: 1
+obstacles:
+  obstacle1:
+    name: debris1
+    pos:
+    - 5
+    - 8
+    - 0
+    vel:
+    - -0.00416
+    - 0
+    - 0
+    stl: stl_files/ball.stl
+    stl_scale: 0.001
