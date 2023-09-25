@@ -1,3 +1,4 @@
+import time
 import numpy as np
 from typing import Dict, Any, Type
 
@@ -61,16 +62,19 @@ class basePathPlanner():
             
             
             off_set = [0,0,0]
-            computed_points = []
+            computed_points = [off_set]
             filler = np.zeros((goal.size-3,))
 
             past_bin = None
             past_bin2 = None
             done = False
 
+            #t0 = time.time()
             for i in range(self.iterations):
                 self.histogram.input_points(points=np.array(points)-off_set)
+                #t0 = time.time()
                 for j in range(self.layers):
+                    #t0 = time.time()
                     candidates = self.histogram.sort_candidate_bins(
                                                                 point=np.array(goal)-np.concatenate((off_set,filler)),
                                                                 layer=j, 
@@ -82,19 +86,22 @@ class basePathPlanner():
                                                                     bin=[candidate[1],candidate[2]],
                                                                     layer=j,
                                                                     past_bin=past_bin,
+                                                                    goal=np.array(goal)-np.concatenate((off_set,filler)),
                                                                     ):
                             if self.layers > 1:
                                 if j >= 1:
                                     past_bin2 = past_bin
                                 past_bin = [int(candidate[1]),int(candidate[2])]
-
                             target, done = self.histogram.get_target_point_from_bin(bin=[candidate[1],candidate[2]],goal=goal[0:3],layer=j)
                             computed_points.append(target+off_set)
                             break
                     if done:
                         break
+                    #print(time.time() - t0,'layer')
+                #print(time.time() - t0)
                 if self.iterations > 1:
                     off_set = computed_points[-1]
+            #print(time.time() - t0)
             return np.array(computed_points)
         
         def check_goal_safety(

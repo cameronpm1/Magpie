@@ -5,6 +5,7 @@ import hydra
 from omegaconf import DictConfig, OmegaConf
 from tqdm import tqdm
 import time
+import numpy as np
 
 from space_sim.make_env import make_env
 from envs.gui import Renderer
@@ -63,4 +64,5 @@ if __name__ == "__main__":
         for i in range(iter):
             simulate_space_env(render=False,verbose=False,pforce=p)
     '''
-    simulate_space_env(render=False,verbose=False)
+    #for i in range(5):
+    simulate_space_env(render=True,verbose=False)

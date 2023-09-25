@@ -39,12 +39,13 @@ path_planner:
   goal_state: [0,35,0,0,0,0,0,0,0,0,0,0,0,0,0]
   path_planning_algorithm: VFH
   kwargs:
-    radius: 15
-    min_obstacle_distance: 5
+    radius: 20
+    min_obstacle_distance: 6
     iterations: 1
-    distance_tolerance: 1
-    layers: 15
-  max_distance: 0.2
+    distance_tolerance: 0.5
+    layers: 5
+    angle_sections: 12
+  max_distance: 0.3
   interpolation_method: spline
 
 env:
@@ -52,12 +53,14 @@ env:
   point_cloud_size: 400
   path_point_tolerance: 0.1
   point_cloud_radius: 30
+  goal_tolerance: 0.1
   kwargs:
     upper_state_bounds: [1e10,  1e10,  1e10, 1e10, 1e10, 1e10, 0.2, 0.2, 6.2832, .25, .25, .25, 1000, 1000, 1000]
     lower_state_bounds: [-1e10,  -1e10,  -1e10, -1e10, -1e10, -1e10, -0.2, -0.2, -6.2832, -.25, -.25, -.25, -1000, -1000, -1000]
     horizon: 20
     valued_actions: 1
 
+#IMPORTANT: when creating a randomly initiated env, make sure that point_cloud_size > n!
 random:
   on: False
   n: 10
@@ -65,32 +68,37 @@ random:
   x_range: [-20,20]
   y_range: [-5,40]
   z_range: [-20,20]
+  stl: stl_files/ball.stl
+  stl_scale: 0.001
+
+adversary:
+  on: True
+  name: adversary
+  pos: [0, 8, 0]
+  vel: [-0.00416, 0, -0.00416]
+  stl: stl_files/ball.stl
+  stl_scale: 0.001
+  control_lim: [0.1,0.1,0.1,0.1,0.1,0.1,1000,1000,1000]
 
 obstacles:
-  obstacle1:
-    name: debris1
-    pos: [5, 8, 5]
-    vel: [-0.00416, 0, -0.00416]
-    stl: stl_files/ball.stl
-    stl_scale: 0.001
-  obstacle2:
-    name: debris2
-    pos: [0, 20, -10]
-    vel: [0, 0, 0.001]
-    stl: stl_files/ball.stl
-    stl_scale: 0.001
-  obstacle3:
-    name: debris3
-    pos: [0, 17, 0]
-    vel: [0, 0, 0]
-    stl: stl_files/ball.stl
-    stl_scale: 0.001
-  obstacle4:
-    name: debris4
-    pos: [10, 24, 2]
-    vel: [-0.0012, 0, 0.0005]
-    stl: stl_files/ball.stl
-    stl_scale: 0.001
+  #obstacle1:
+    #name: debris2
+    #pos: [0, 20, -10]
+    #vel: [0, 0, 0.001]
+    #stl: stl_files/ball.stl
+    #stl_scale: 0.001
+  #obstacle2:
+    #name: debris3
+    #pos: [0, 17, 0]
+    #vel: [0, 0, 0]
+    #stl: stl_files/ball.stl
+    #stl_scale: 0.001
+  #obstacle3:
+    #name: debris4
+    #pos: [10, 24, 2]
+    #vel: [-0.0012, 0, 0.0005]
+    #stl: stl_files/ball.stl
+    #stl_scale: 0.001
   #obstacle2:
     #name: debris2
     #pos: [10, 5, 3]

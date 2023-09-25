@@ -89,7 +89,7 @@ class pathPlanner(basePathPlanner):
                 #t0 = time.time()
                 next_location = self.algorithm.compute_next_point(points=point_cloud, goal=goal)
                 #print(time.time() - t0)
-
+                
         if self.interpolation_method == 'linear':
             path = np.array([])
 

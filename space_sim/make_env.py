@@ -62,17 +62,51 @@ def make_env(cfg):
         path_point_tolerance = cfg['env']['path_point_tolerance'],
         point_cloud_radius = cfg['env']['point_cloud_radius'],
         control_method = cfg['env']['control_method'],
+        goal_tolerance = cfg['env']['goal_tolerance'],
         kwargs = kwargs,
     )
 
     if cfg['obstacles'] is None:
         cfg['obstacles'] = []
 
+    if bool(cfg['adversary'][True]):
+        stl = pv.read(cfg['adversary']['stl'])
+        stl.points *= cfg['adversary']['stl_scale']
+
+        adversary_dynamics = satelliteDynamics(
+            timestep = cfg['satellite']['dynamics']['timestep'],
+            horizon = cfg['satellite']['dynamics']['horizon'],
+            pos = np.array(cfg['adversary']['pos']),
+            vel = np.array(cfg['adversary']['vel']),
+            initial_orbit = orbit_params,
+            initial_state_data = cfg['satellite']['dynamics']['initial_state_data'],
+            spacecraft_data = cfg['satellite']['dynamics']['spacecraft_data'],
+            max_control = cfg['adversary']['control_lim'],
+        )
+
+        adversary = dynamicObject(
+            dynamics = adversary_dynamics, 
+            mesh = stl,
+            name = cfg['adversary']['name'], 
+            pos = cfg['adversary']['pos']
+        )
+
+        kwargs = {}
+
+        for kwarg in cfg['env']['kwargs'].keys():
+            kwargs[kwarg] = cfg['env']['kwargs'][kwarg]
+            
+        env.create_adversary(
+            adversary=adversary,
+            kwargs=kwargs,
+            control_method='MPC'
+        )
+
     
     if bool(cfg['random'][True]):
         for n in range(cfg['random']['n']):
-            stl = pv.read(cfg['obstacles']['obstacle1']['stl'])
-            stl.points *= cfg['obstacles']['obstacle1']['stl_scale']
+            stl = pv.read(cfg['random']['stl'])
+            stl.points *= cfg['random']['stl_scale']
 
             xlim = cfg['random']['x_range']
             ylim = cfg['random']['y_range']
@@ -94,8 +128,8 @@ def make_env(cfg):
             temp_obstacle = dynamicObject(
                 dynamics = obs_dynamics, 
                 mesh = stl,
-                name = cfg['obstacles']['obstacle1']['name'], 
-                pos = cfg['obstacles']['obstacle1']['pos'])
+                name = 'rand'+str(n), 
+                pos = pos)
             
             env.add_obstacle(obstacle=temp_obstacle)
     else:
