@@ -105,11 +105,6 @@ class obstacleAvoidanceEnv():
         if self.current_path.size == 0:
             self.first_goal = True
             self.get_new_path()
-        if self.time%110 == 0 or self.time==7:
-            print(self.current_path[:,0:3])
-            print(self.main_object.dynamics.get_pos())
-            print(self.adversary.dynamics.get_pos())
-            print(self.adversary.dynamics.get_vel())
         self.time += 1
         return self.main_object.dynamics.state, action, self.done, self.reward
 
