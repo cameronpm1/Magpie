@@ -231,9 +231,9 @@ class satelliteDynamics(baseDynamics):
         self.control_matrix[10][7] = 1/self.spacecraft_data['J_sc'][1]
         self.control_matrix[11][5] = -self.spacecraft_data['alpha'][2]/self.spacecraft_data['J_sc'][2]
         self.control_matrix[11][8] = 1/self.spacecraft_data['J_sc'][2]
-        self.control_matrix[12][3] = 1
-        self.control_matrix[13][4] = 1
-        self.control_matrix[14][5] = 1
+        self.control_matrix[12][6] = 1
+        self.control_matrix[13][7] = 1
+        self.control_matrix[14][8] = 1
         '''
         numerator = (np.exp(self.state_matrix*self.timestep)-np.identity(self.state.size))                       
         control_matrix_integrated = np.nan_to_num( numerator / np.where(self.state_matrix==0, np.nan, self.state_matrix))
