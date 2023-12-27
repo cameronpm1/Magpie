@@ -1,9 +1,8 @@
-import sys
-sys.path.insert(1, 'c:/Users/Cameron Mehlman/Documents/Magpie')
+import os,sys
+sys.path.append('home/cameron/Magpie')
 
 import hydra
 from omegaconf import DictConfig, OmegaConf
-from tqdm import tqdm
 import time
 import numpy as np
 
@@ -65,4 +64,4 @@ if __name__ == "__main__":
             simulate_space_env(render=False,verbose=False,pforce=p)
     '''
     #for i in range(5):
-    simulate_space_env(render=True,verbose=False)
+    simulate_space_env(render=False,verbose=False)

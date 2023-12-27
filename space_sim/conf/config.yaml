@@ -76,7 +76,7 @@ adversary:
   name: adversary
   pos: [0, 8, 0]
   vel: [-0.00416, 0, -0.00416]
-  stl: stl_files/ball.stl
+  stl: stl_files/ball.STL
   stl_scale: 0.001
   control_lim: [0.1,0.1,0.1,0.1,0.1,0.1,1000,1000,1000]
 
